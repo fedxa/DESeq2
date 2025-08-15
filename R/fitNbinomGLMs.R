@@ -358,6 +358,7 @@ fitNbinomGLMsOptim <- function(object,modelMatrix,lambda,
     alpha <- alpha_hat[row]
     objectiveFn <- function(p) {
       mu_row <- as.numeric(nf * 2^(x %*% p))
+      mu_row[mu_row < minmu] <- minmu ## Cap the zero expresson. Does not coincide exactly with nonOptim approach
       logLikeVector <- dnbinom(k,mu=mu_row,size=1/alpha,log=TRUE)
       logLike <- if (useWeights) {
                    sum(weights[row,] * logLikeVector)
