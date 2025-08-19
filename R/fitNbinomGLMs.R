@@ -28,7 +28,7 @@
 # errors on the log2 scale
 fitNbinomGLMs <- function(object, modelMatrix=NULL, modelFormula, alpha_hat, lambda,
                           renameCols=TRUE, betaTol=1e-8, maxit=100, useOptim=TRUE,
-                          useQR=TRUE, forceOptim=FALSE, warnNonposVar=TRUE, minmu=0.5,
+                          useQR=TRUE, forceOptim=FALSE, warnNonposVar=TRUE, minmu=0.5, lambdamu=0,
                           type = c("DESeq2", "glmGamPoi")) {
   type <- match.arg(type, c("DESeq2", "glmGamPoi"))
   
@@ -169,7 +169,8 @@ fitNbinomGLMs <- function(object, modelMatrix=NULL, modelFormula, alpha_hat, lam
                             weightsSEXP = weights,
                             useWeightsSEXP = useWeights,
                             tolSEXP = betaTol, maxitSEXP = maxit,
-                            useQRSEXP=useQR, minmuSEXP=minmu)
+                            useQRSEXP=useQR, minmuSEXP=minmu,
+                            lambdamuSEXP = lambdamu)
 
   # Note on deviance: the 'deviance' calculated in fitBeta() (C++)
   # is not returned in mcols(object)$deviance. instead, we calculate
@@ -218,7 +219,7 @@ fitNbinomGLMs <- function(object, modelMatrix=NULL, modelFormula, alpha_hat, lam
                                    weights,useWeights,
                                    betaMatrix,betaSE,betaConv,
                                    beta_mat,
-                                   mu,logLike,minmu=minmu)
+                                   mu,logLike,minmu=minmu, lambdamu=lambdamu)
     betaMatrix <- resOptim$betaMatrix
     betaSE <- resOptim$betaSE
     betaConv <- resOptim$betaConv
@@ -343,7 +344,7 @@ fitNbinomGLMsOptim <- function(object,modelMatrix,lambda,
                                weights,useWeights,
                                betaMatrix,betaSE,betaConv,
                                beta_mat,
-                               mu,logLike,minmu=0.5) {
+                               mu,logLike,minmu=0.5, lambdamu=0) {
   x <- modelMatrix
   lambdaNatLogScale <- lambda / log(2)^2
   large <- 30
@@ -358,7 +359,6 @@ fitNbinomGLMsOptim <- function(object,modelMatrix,lambda,
     alpha <- alpha_hat[row]
     objectiveFn <- function(p) {
       mu_row <- as.numeric(nf * 2^(x %*% p))
-      mu_row[mu_row < minmu] <- minmu ## Cap the zero expresson. Does not coincide exactly with nonOptim approach
       logLikeVector <- dnbinom(k,mu=mu_row,size=1/alpha,log=TRUE)
       logLike <- if (useWeights) {
                    sum(weights[row,] * logLikeVector)
@@ -366,7 +366,8 @@ fitNbinomGLMsOptim <- function(object,modelMatrix,lambda,
                    sum(logLikeVector)
                  }
       logPrior <- sum(dnorm(p,0,sqrt(1/lambda),log=TRUE))
-      negLogPost <- -1 * (logLike + logPrior)
+      regularization <- lambdamu * sum( log(mu_row[mu_row < minmu]/minmu) - mu_row[mu_row < minmu]/minmu + 1 )
+      negLogPost <- -1 * (logLike + logPrior + regularization)
       if (is.finite(negLogPost)) negLogPost else 10^300
     }
     o <- optim(betaRow, objectiveFn, method="L-BFGS-B",lower=-large, upper=large)
@@ -385,7 +386,7 @@ fitNbinomGLMsOptim <- function(object,modelMatrix,lambda,
     mu_row <- as.numeric(nf * 2^(x %*% o$par))
     # store the new mu vector
     mu[row,] <- mu_row
-    mu_row[mu_row < minmu] <- minmu
+    ## mu_row[mu_row < minmu] <- minmu
     w <- if (useWeights) {
            diag(weights[row,] * (mu_row^-1 + alpha)^-1)
          } else {

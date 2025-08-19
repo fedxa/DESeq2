@@ -310,7 +310,7 @@ results <- function(object, contrast, name,
                     addMLE=FALSE,
                     tidy=FALSE,
                     parallel=FALSE, BPPARAM=bpparam(), 
-                    minmu=0.5) {
+                    minmu=0.5, lambdamu=0) {
 
   stopifnot(is(object, "DESeqDataSet"))
   
@@ -425,7 +425,7 @@ of length 3 to 'contrast' instead of using 'name'")
     # with 100s of samples, this can get slow, so offer parallelization
     if (!parallel) {
       res <- cleanContrast(object, contrast, expanded=isExpanded, listValues=listValues,
-                           test=test, useT=useT, minmu=minmu)
+                           test=test, useT=useT, minmu=minmu, lambdamu=lambdamu)
     } else if (parallel) {
       # parallel execution
       nworkers <- getNworkers(BPPARAM)
@@ -433,7 +433,7 @@ of length 3 to 'contrast' instead of using 'name'")
       res <- do.call(rbind, bplapply(levels(idx), function(l) {
         cleanContrast(object[idx == l,,drop=FALSE], contrast,
                       expanded=isExpanded, listValues=listValues,
-                      test=test, useT=useT, minmu=minmu)
+                      test=test, useT=useT, minmu=minmu, lambdamu=lambdamu)
       }, BPPARAM=BPPARAM))
     }
 
@@ -757,7 +757,7 @@ filtered_p <- function( filter, test, theta, data, method = "none" ) {
 # c' beta / sqrt( c' sigma c)
 # where beta is the coefficient vector
 # and sigma is the covariance matrix for beta
-getContrast <- function(object, contrast, useT=FALSE, minmu) {
+getContrast <- function(object, contrast, useT=FALSE, minmu, lambdamu) {
   if (missing(contrast)) {
     stop("must provide a contrast")
   }
@@ -804,7 +804,8 @@ getContrast <- function(object, contrast, useT=FALSE, minmu) {
                      useWeightsSEXP = useWeights,
                      tolSEXP = 1e-8, maxitSEXP = 0,
                      useQRSEXP=FALSE, # QR not relevant, fitting loop isn't entered
-                     minmuSEXP=minmu)
+                     minmuSEXP=minmu,
+                     lambdamuSEXP = lambdamu)
   # convert back to log2 scale
   contrastEstimate <- log2(exp(1)) * betaRes$contrast_num
   contrastSE <- log2(exp(1)) * betaRes$contrast_denom
@@ -829,7 +830,7 @@ getContrast <- function(object, contrast, useT=FALSE, minmu) {
 # this function takes a desired contrast as specified by results(),
 # performs checks, and then either returns the already existing contrast
 # or generates the contrast by calling getContrast() using a numeric vector
-cleanContrast <- function(object, contrast, expanded=FALSE, listValues, test, useT, minmu) {
+cleanContrast <- function(object, contrast, expanded=FALSE, listValues, test, useT, minmu, lambdamu) {
   # get the names of columns in the beta matrix
   resNames <- resultsNames(object)
   # if possible, return pre-computed columns, which are
@@ -1004,7 +1005,7 @@ cleanContrast <- function(object, contrast, expanded=FALSE, listValues, test, us
     contrastAllZero <- contrastAllZeroNumeric(object, contrast)
 
     # now get the contrast
-    contrastResults <- getContrast(object, contrast, useT=useT, minmu)
+    contrastResults <- getContrast(object, contrast, useT=useT, minmu, lambdamu)
     lfcType <- if (attr(object,"betaPrior")) "MAP" else "MLE"
     contrastDescriptions <- paste(c(paste0("log2 fold change (",lfcType,"):"),
                                     "standard error:",

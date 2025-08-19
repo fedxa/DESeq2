@@ -1340,7 +1340,7 @@ nbinomWaldTest <- function(object,
                            betaPrior=FALSE, betaPriorVar,
                            modelMatrix=NULL, modelMatrixType,
                            betaTol=1e-8, maxit=100, useOptim=TRUE, quiet=FALSE,
-                           useT=FALSE, df, useQR=TRUE, minmu=0.5) {
+                           useT=FALSE, df, useQR=TRUE, minmu=0.5, lambdamu=0) {
   if (is.null(dispersions(object))) {
     stop("testing requires dispersion estimates, first call estimateDispersions()")
   }
@@ -1417,7 +1417,7 @@ nbinomWaldTest <- function(object,
                          useOptim=useOptim, useQR=useQR,
                          renameCols=renameCols,
                          modelMatrix=modelMatrix,
-                         minmu=minmu)
+                         minmu=minmu, lambdamu=lambdamu)
     H <- fit$hat_diagonals
     mu <- fit$mu
     modelMatrix <- fit$modelMatrix

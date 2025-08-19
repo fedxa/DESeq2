@@ -280,7 +280,8 @@ List fitDisp(SEXP ySEXP, SEXP xSEXP, SEXP mu_hatSEXP, SEXP log_alphaSEXP, SEXP l
 // note: the betas are on the natural log scale
 //
 // [[Rcpp::export]]
-List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contrastSEXP, SEXP beta_matSEXP, SEXP lambdaSEXP, SEXP weightsSEXP, SEXP useWeightsSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP useQRSEXP, SEXP minmuSEXP) {
+List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contrastSEXP, SEXP beta_matSEXP, SEXP lambdaSEXP, SEXP weightsSEXP, SEXP useWeightsSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP useQRSEXP, SEXP minmuSEXP, SEXP lambdamuSEXP
+    ) {
   
   arma::mat y = as<arma::mat>(ySEXP);
   arma::mat nf = as<arma::mat>(nfSEXP);
@@ -300,6 +301,7 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
   arma::colvec yrow, nfrow, beta_hat, mu_hat, z;
   arma::mat ridge, sigma;
   arma::vec w_vec, w_sqrt_vec;
+  double lambdamu = as<double>(lambdamuSEXP); // Somehow a strong contribution?
   // observation weights
   arma::mat weights = as<arma::mat>(weightsSEXP);
   bool useWeights = as<bool>(useWeightsSEXP);
@@ -322,13 +324,15 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
     yrow = y.row(i).t();
     beta_hat = beta_mat.row(i).t();
     mu_hat = nfrow % exp(x * beta_hat);
-    for (int j = 0; j < y_m; j++) {
-      mu_hat(j) = fmax(mu_hat(j), minmu);
-    }
+    // for (int j = 0; j < y_m; j++) {
+    //   mu_hat(j) = fmax(mu_hat(j), minmu);
+    // }
     ridge = diagmat(lambda);
     dev = 0.0;
     dev_old = 0.0;
     if (useQR) {
+      arma::vec p_vec = arma::zeros(y_m);
+      arma::vec ystar = arma::zeros(y_m);
       // make an orthonormal design matrix including
       // the ridge penalty
       for (int t = 0; t < maxit; t++) {
@@ -340,17 +344,34 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
 	  w_vec = mu_hat/(1.0 + alpha_hat(i) * mu_hat);
 	  w_sqrt_vec = sqrt(w_vec);
 	}
-	// prepare matrices
-	weighted_x_ridge = join_cols(x.each_col() % w_sqrt_vec, sqrt(ridge));
-	qr_econ(q, r, weighted_x_ridge);
-	big_w_diag = arma::ones(y_m + x_p);
-	big_w_diag(arma::span(0, y_m - 1)) = w_vec;
-	// big_w_sqrt = diagmat(sqrt(big_w_diag));
 	z = arma::log(mu_hat / nfrow) + (yrow - mu_hat) / mu_hat;
-	arma::vec w_diag = w_vec;
-	arma::mat z_sqrt_w = z.each_col() % sqrt(w_diag);
-	arma::colvec big_z_sqrt_w = arma::zeros(y_m + x_p);
+	// KL floor terms
+        for (int j = 0; j < y_m; j++) {
+	    if (mu_hat(j) < minmu) {
+		p_vec(j) = lambdamu * mu_hat(j)/minmu;
+		double q = lambdamu * (1 - mu_hat(j)/minmu);
+		ystar(j) = q / p_vec(j);
+	    } else {
+		p_vec(j) = 0;
+		ystar(j) = 0;
+	    }
+	}
+	arma::vec sqrt_lambda_p = arma::sqrt(p_vec);
+  
+	// prepare matrices
+	weighted_x_ridge = join_cols(
+	    join_cols(x.each_col() % w_sqrt_vec,
+		      sqrt(ridge)),
+	    x.each_col() % sqrt_lambda_p
+	    );
+	qr_econ(q, r, weighted_x_ridge);
+
+	arma::mat z_sqrt_w = z.each_col() % sqrt(w_vec);
+	arma::colvec b3 = ystar % sqrt_lambda_p;           // sqrt(D) y*
+	arma::colvec big_z_sqrt_w = arma::zeros(y_m + x_p + y_m);
 	big_z_sqrt_w(arma::span(0,y_m - 1)) = z_sqrt_w;
+	// big_z_sqrt_w(arma::span(y_m, y_m+x_p - 1)) = arma::zeros(x_p); // No need to redo
+	big_z_sqrt_w(arma::span(y_m + x_p, y_m + x_p + y_m -1)) = b3;
 	// IRLS with Q matrix for X    
 	gamma_hat = q.t() * big_z_sqrt_w;
 	solve(beta_hat, r, gamma_hat);
@@ -359,9 +380,9 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
 	  break;
 	}
 	mu_hat = nfrow % exp(x * beta_hat);
-	for (int j = 0; j < y_m; j++) {
-	  mu_hat(j) = fmax(mu_hat(j), minmu);
-	}
+	// for (int j = 0; j < y_m; j++) {
+	//   mu_hat(j) = fmax(mu_hat(j), minmu);
+	// }
 	dev = 0.0;
 	for (int j = 0; j < y_m; j++) {
 	  // note the order for Rf_dnbinom_mu: x, sz, mu, lg
@@ -383,6 +404,8 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
       }
 
     } else {
+      arma::vec p_vec = arma::zeros(y_m);
+      arma::vec q_vec = arma::zeros(y_m);
       // use the standard design matrix x
       // and matrix inversion
       for (int t = 0; t < maxit; t++) {
@@ -394,16 +417,28 @@ List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contr
 	  w_vec = mu_hat/(1.0 + alpha_hat(i) * mu_hat);
 	  w_sqrt_vec = sqrt(w_vec);
 	}
+	for (int j = 0; j < y_m; j++) {
+	    if (mu_hat(j) < minmu) {
+		p_vec(j) = lambdamu * mu_hat(j)/minmu;
+		q_vec(j) = lambdamu * (1 - mu_hat(j)/minmu);
+	    } else {
+		p_vec(j) = 0;
+		q_vec(j) = 0;
+	    }
+	}
 	z = arma::log(mu_hat / nfrow) + (yrow - mu_hat) / mu_hat;
-	solve(beta_hat, x.t() * (x.each_col() % w_vec) + ridge, x.t() * (z % w_vec));
+//	solve(beta_hat, x.t() * (x.each_col() % w_vec) + ridge, x.t() * (z % w_vec));
+	solve(beta_hat,
+	      x.t() * (x.each_col() % (w_vec+p_vec)) + ridge,
+	      x.t() * (z % w_vec + (x * beta_hat) % p_vec + q_vec));
 	if (sum(abs(beta_hat) > large) > 0) {
 	  iter(i) = maxit;
 	  break;
 	}
 	mu_hat = nfrow % exp(x * beta_hat);
-	for (int j = 0; j < y_m; j++) {
-	  mu_hat(j) = fmax(mu_hat(j), minmu);
-	}
+	// for (int j = 0; j < y_m; j++) {
+	//     mu_hat(j) = fmax(mu_hat(j), minmu);
+	// }
 	dev = 0.0;
 	for (int j = 0; j < y_m; j++) {
 	  // note the order for Rf_dnbinom_mu: x, sz, mu, lg

@@ -37,8 +37,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fitBeta
-List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contrastSEXP, SEXP beta_matSEXP, SEXP lambdaSEXP, SEXP weightsSEXP, SEXP useWeightsSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP useQRSEXP, SEXP minmuSEXP);
-RcppExport SEXP _DESeq2_fitBeta(SEXP ySEXPSEXP, SEXP xSEXPSEXP, SEXP nfSEXPSEXP, SEXP alpha_hatSEXPSEXP, SEXP contrastSEXPSEXP, SEXP beta_matSEXPSEXP, SEXP lambdaSEXPSEXP, SEXP weightsSEXPSEXP, SEXP useWeightsSEXPSEXP, SEXP tolSEXPSEXP, SEXP maxitSEXPSEXP, SEXP useQRSEXPSEXP, SEXP minmuSEXPSEXP) {
+List fitBeta(SEXP ySEXP, SEXP xSEXP, SEXP nfSEXP, SEXP alpha_hatSEXP, SEXP contrastSEXP, SEXP beta_matSEXP, SEXP lambdaSEXP, SEXP weightsSEXP, SEXP useWeightsSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP useQRSEXP, SEXP minmuSEXP, SEXP lambdamuSEXP);
+RcppExport SEXP _DESeq2_fitBeta(SEXP ySEXPSEXP, SEXP xSEXPSEXP, SEXP nfSEXPSEXP, SEXP alpha_hatSEXPSEXP, SEXP contrastSEXPSEXP, SEXP beta_matSEXPSEXP, SEXP lambdaSEXPSEXP, SEXP weightsSEXPSEXP, SEXP useWeightsSEXPSEXP, SEXP tolSEXPSEXP, SEXP maxitSEXPSEXP, SEXP useQRSEXPSEXP, SEXP minmuSEXPSEXP, SEXP lambdamuSEXPSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -55,7 +55,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type maxitSEXP(maxitSEXPSEXP);
     Rcpp::traits::input_parameter< SEXP >::type useQRSEXP(useQRSEXPSEXP);
     Rcpp::traits::input_parameter< SEXP >::type minmuSEXP(minmuSEXPSEXP);
-    rcpp_result_gen = Rcpp::wrap(fitBeta(ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP));
+    Rcpp::traits::input_parameter< SEXP >::type lambdamuSEXP(lambdamuSEXPSEXP);
+    rcpp_result_gen = Rcpp::wrap(fitBeta(ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP, lambdamuSEXP));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -83,7 +84,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_DESeq2_fitDisp", (DL_FUNC) &_DESeq2_fitDisp, 15},
-    {"_DESeq2_fitBeta", (DL_FUNC) &_DESeq2_fitBeta, 13},
+    {"_DESeq2_fitBeta", (DL_FUNC) &_DESeq2_fitBeta, 14},
     {"_DESeq2_fitDispGrid", (DL_FUNC) &_DESeq2_fitDispGrid, 11},
     {NULL, NULL, 0}
 };

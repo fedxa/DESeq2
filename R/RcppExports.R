@@ -5,8 +5,8 @@ fitDisp <- function(ySEXP, xSEXP, mu_hatSEXP, log_alphaSEXP, log_alpha_prior_mea
     .Call('_DESeq2_fitDisp', PACKAGE = 'DESeq2', ySEXP, xSEXP, mu_hatSEXP, log_alphaSEXP, log_alpha_prior_meanSEXP, log_alpha_prior_sigmasqSEXP, min_log_alphaSEXP, kappa_0SEXP, tolSEXP, maxitSEXP, usePriorSEXP, weightsSEXP, useWeightsSEXP, weightThresholdSEXP, useCRSEXP)
 }
 
-fitBeta <- function(ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP) {
-    .Call('_DESeq2_fitBeta', PACKAGE = 'DESeq2', ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP)
+fitBeta <- function(ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP, lambdamuSEXP) {
+    .Call('_DESeq2_fitBeta', PACKAGE = 'DESeq2', ySEXP, xSEXP, nfSEXP, alpha_hatSEXP, contrastSEXP, beta_matSEXP, lambdaSEXP, weightsSEXP, useWeightsSEXP, tolSEXP, maxitSEXP, useQRSEXP, minmuSEXP, lambdamuSEXP)
 }
 
 fitDispGrid <- function(ySEXP, xSEXP, mu_hatSEXP, disp_gridSEXP, log_alpha_prior_meanSEXP, log_alpha_prior_sigmasqSEXP, usePriorSEXP, weightsSEXP, useWeightsSEXP, weightThresholdSEXP, useCRSEXP) {
